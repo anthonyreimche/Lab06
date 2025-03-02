@@ -1,0 +1,36 @@
+double** read2DArray(char* filename, int* n) {
+    FILE* file = fopen(filename, "r");
+    if (!file) return NULL;
+
+    double** coords = NULL;
+    *n = 0;
+    char line[100];
+    
+    // Count lines
+    while (fgets(line, sizeof(line), file)) {
+        (*n)++;
+    }
+    
+    // Allocate memory
+    coords = (double**)malloc(*n * sizeof(double*));
+    for (int i = 0; i < *n; i++) {
+        coords[i] = (double*)malloc(2 * sizeof(double));
+    }
+    
+    // Reset file pointer and read coordinates
+    rewind(file);
+    int i = 0;
+    while (fgets(line, sizeof(line), file)) {
+        sscanf(line, "%lf,%lf", &coords[i][0], &coords[i][1]);
+        i++;
+    }
+    
+    fclose(file);
+    return coords;
+}
+
+void print2DArray(double** arr, int n) {
+    for(int i = 0; i < n; i++) {
+        printf("(%.2f, %.2f)\n", arr[i][0], arr[i][1]);
+    }
+}
