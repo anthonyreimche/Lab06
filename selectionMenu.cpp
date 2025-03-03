@@ -1,508 +1,345 @@
 /**
- * @file selectionMenu.cpp
- * @brief Implementation of the SelectionMenu class
+ * @file selectionMenu.c
+ * @brief Implementation of menu system functions
  */
 
 #include "selectionMenu.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <windows.h>
 #include <conio.h>
 #include <stdarg.h>
-#include <string.h>
-#include <ctype.h>
 
-// Key mapping constants
-static const int KEY_UP = 72;      ///< Up arrow key code
-static const int KEY_DOWN = 80;    ///< Down arrow key code
-static const int KEY_ENTER = 13;   ///< Enter key code
-static const int KEY_ESC = 27;     ///< Escape key code
-static const int KEY_W = 'w';      ///< Alternative up key
-static const int KEY_S = 's';      ///< Alternative down key
-static const int KEY_D = 'd';      ///< Alternative enter key
-static const int KEY_SPECIAL = 224; ///< Special key prefix
-static const int KEY_EXTENDED = 0;  ///< Extended key prefix
+static int g_menuColor = COLOR_GREEN;  // Default text color is green
 
-// Initialize static member
-int SelectionMenu::menuColor = COLOR_GREEN;
-
-/**
- * @brief Constructor for SelectionMenu class
- */
-SelectionMenu::SelectionMenu() {
-    currentMenuType = CLASSIC;
-    setColor(menuColor);  ///< Set initial color
+void SelectionMenu_init(SelectionMenu* menu) {
+    menu->currentMenuType = MENU_CLASSIC;
+    SelectionMenu_resetColor();  // Apply the green color immediately
 }
 
-/**
- * @brief Set the text color and background color
- * @param textColor Text color to set
- * @param bgColor Background color to set
- */
-void SelectionMenu::setColor(int textColor, int bgColor) {
+void SelectionMenu_setMenuType(SelectionMenu* menu, MenuType type) {
+    menu->currentMenuType = type;
+}
+
+MenuType SelectionMenu_getMenuType(const SelectionMenu* menu) {
+    return menu->currentMenuType;
+}
+
+void SelectionMenu_setMenuColor(int color) {
+    g_menuColor = color;
+}
+
+int SelectionMenu_getMenuColor(void) {
+    return g_menuColor;
+}
+
+void SelectionMenu_setColor(int textColor, int bgColor) {
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), (bgColor << 4) | textColor);
 }
 
-/**
- * @brief Reset the text color to the default menu color
- */
-void SelectionMenu::resetColor() {
-    setColor(menuColor);
+void SelectionMenu_resetColor(void) {
+    SelectionMenu_setColor(g_menuColor, COLOR_BLACK);
 }
 
-/**
- * @brief Print text with a specified color
- * @param textColor Text color to use
- * @param format Format string for text
- * @param ... Variable arguments for format string
- */
-void SelectionMenu::printColored(int textColor, const char* format, ...) {
+void SelectionMenu_printColored(int textColor, const char* format, ...) {
     va_list args;
     va_start(args, format);
     
-    setColor(textColor);
+    SelectionMenu_setColor(textColor, COLOR_BLACK);
     vprintf(format, args);
-    setColor(menuColor);
+    SelectionMenu_resetColor();
     
     va_end(args);
 }
 
-/**
- * @brief Set the menu color
- * @param color New menu color
- */
-void SelectionMenu::setMenuColor(int color) {
-    menuColor = color;
-    setColor(menuColor);
-}
-
-/**
- * @brief Get the current menu color
- * @return Current menu color
- */
-int SelectionMenu::getMenuColor() {
-    return menuColor;
-}
-
-/**
- * @brief Set the menu type
- * @param type New menu type
- */
-void SelectionMenu::setMenuType(MenuType type) {
-    currentMenuType = type;
-}
-
-/**
- * @brief Get the current menu type
- * @return Current menu type
- */
-MenuType SelectionMenu::getMenuType() const {
-    return currentMenuType;
-}
-
-/**
- * @brief Wait for a key press and display a message
- * @param message Message to display
- */
-void SelectionMenu::waitForKey(const char* message) {
+void SelectionMenu_waitForKey(const char* message) {
     if (message) {
-        printf("%s", message);
+        printf("\n%s", message);
     }
     _getch();
 }
 
-/**
- * @brief Find files in a directory with a specified extension
- * @param directory Directory to search
- * @param extension File extension to search for
- * @param fileCount Pointer to store the number of files found
- * @param maxFiles Maximum number of files to find
- * @return Array of file names
- */
-char** SelectionMenu::findFiles(const char* directory, const char* extension, int* fileCount, int maxFiles) {
-    char** files = (char**)malloc(maxFiles * sizeof(char*));
-    *fileCount = 0;
-    
-    // Create search pattern (e.g., "*.csv")
-    char searchPattern[MAX_PATH_LENGTH];
-    snprintf(searchPattern, MAX_PATH_LENGTH, "%s\\*%s", directory, extension);
-    
-    WIN32_FIND_DATA findData;
-    HANDLE hFind = FindFirstFile(searchPattern, &findData);
-    
-    if (hFind == INVALID_HANDLE_VALUE) {
-        return files;
-    }
-    
-    do {
-        if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-            files[*fileCount] = (char*)malloc(MAX_PATH_LENGTH);
-            strncpy(files[*fileCount], findData.cFileName, MAX_PATH_LENGTH - 1);
-            files[*fileCount][MAX_PATH_LENGTH - 1] = '\0';
-            (*fileCount)++;
-            
-            if (*fileCount >= maxFiles) {
-                break;
-            }
-        }
-    } while (FindNextFile(hFind, &findData));
-    
-    FindClose(hFind);
-    return files;
-}
-
-/**
- * @brief Create menu items from an array of file names
- * @param files Array of file names
- * @param fileCount Number of file names
- * @param maxPathLength Maximum length of a file name
- * @return Array of menu items
- */
-const char** SelectionMenu::createMenuItems(char** files, int fileCount, int maxPathLength) {
-    const char** menuItems = (const char**)malloc(fileCount * sizeof(char*));
-    for (int i = 0; i < fileCount; i++) {
-        if (currentMenuType == CURSOR) {
-            char* menuItem = (char*)malloc(maxPathLength);
-            strncpy(menuItem, files[i], maxPathLength - 1);
-            menuItem[maxPathLength - 1] = '\0';
-            menuItems[i] = menuItem;
-        } else {
-            char* menuItem = (char*)malloc(maxPathLength + 10);
-            snprintf(menuItem, maxPathLength + 10, "%d. %s", i + 1, files[i]);
-            menuItems[i] = menuItem;
-        }
-    }
-    return menuItems;
-}
-
-/**
- * @brief Free an array of menu items
- * @param menuItems Array of menu items to free
- * @param count Number of menu items
- */
-void SelectionMenu::freeMenuItems(const char** menuItems, int count) {
-    for (int i = 0; i < count; i++) {
-        free((void*)menuItems[i]);
-    }
-    free((void*)menuItems);
-}
-
-/**
- * @brief Free an array of file names
- * @param files Array of file names to free
- * @param count Number of file names
- */
-void SelectionMenu::freeFileList(char** files, int count) {
-    for (int i = 0; i < count; i++) {
-        free(files[i]);
-    }
-    free(files);
-}
-
-/**
- * @brief Display a title on the screen
- * @param title Title to display
- */
-void SelectionMenu::displayTitle(const char* title) {
+void SelectionMenu_clearScreen(void) {
     system("cls");
+}
+
+static void displayTitle(const char* title) {
     printf("\n%s\n", title);
+    for (size_t i = 0; i < strlen(title); i++) {
+        printf("=");
+    }
+    printf("\n\n");
 }
 
-/**
- * @brief Highlight text on the screen
- * @param text Text to highlight
- */
-void SelectionMenu::highlightText(const char* text) {
-    setColor(COLOR_BLACK, menuColor);
+static void highlightText(const char* text) {
+    SelectionMenu_setColor(COLOR_BLACK, COLOR_WHITE);
     printf("%s", text);
-    setColor(menuColor);
+    SelectionMenu_resetColor();
 }
 
-/**
- * @brief Helper function to check if a key is a special key
- * @param key Key code to check
- * @return true if key is special
- */
-static int isSpecialKey(int key) {
-    return key == KEY_SPECIAL || key == KEY_EXTENDED;
-}
-
-/**
- * @brief Helper function to check if a key is an up movement key
- * @param key Key code to check
- * @return true if key is up movement
- */
-static int isUpKey(int key) {
-    return key == KEY_UP || tolower(key) == KEY_W;
-}
-
-/**
- * @brief Helper function to check if a key is a down movement key
- * @param key Key code to check
- * @return true if key is down movement
- */
-static int isDownKey(int key) {
-    return key == KEY_DOWN || tolower(key) == KEY_S;
-}
-
-/**
- * @brief Helper function to check if a key is an enter/select key
- * @param key Key code to check
- * @return true if key is enter/select
- */
-static int isEnterKey(int key) {
-    return key == KEY_ENTER || tolower(key) == KEY_D;
-}
-
-/**
- * @brief Helper function to check if a key is a valid number selection
- * @param key Key code to check
- * @param nItems Number of menu items
- * @return true if key is valid number selection
- */
-static int isNumberKey(int key, int nItems) {
-    key = tolower(key);
-    return key >= '1' && key <= '0' + nItems;
-}
-
-/**
- * @brief Helper function to convert number key to selection index
- * @param key Key code to convert
- * @return Zero-based selection index
- */
-static int getNumberValue(int key) {
-    return key - '1';
-}
-
-/**
- * @brief Helper function to check if a key is the escape key
- * @param key Key code to check
- * @return true if key is escape
- */
-static int isEscKey(int key) {
-    return key == KEY_ESC;
-}
-
-/**
- * @brief Get a key press from the user
- * @return Key code of the pressed key
- */
-int SelectionMenu::getKey() {
+static int getKey(void) {
     int key = _getch();
-    if (isSpecialKey(key)) {
+    if (key == 0 || key == 224) {  // Special key
         key = _getch();
     }
     return key;
 }
 
-/**
- * @brief Handle navigation keys and update the selection
- * @param selection Current selection
- * @param nItems Number of menu items
- * @param key Key code of the pressed key
- * @return New selection
- */
-int SelectionMenu::handleNavigation(int selection, int nItems, int key) {
-    if (isUpKey(key)) {
-        return (selection > 1) ? selection - 1 : nItems;
-    }
-    if (isDownKey(key)) {
-        return (selection < nItems) ? selection + 1 : 1;
-    }
-    if (isEnterKey(key)) {
-        return -1;
-    }
-    if (isEscKey(key)) {
-        return 0;  ///< Return 0 for ESC key
-    }
-    if (isNumberKey(key, nItems)) {
-        return getNumberValue(key) + 1;
+static int handleNavigation(int selection, int nItems, int key) {
+    switch (key) {
+        case 72:  // Up arrow
+        case 'w':
+        case 'W':
+            selection = (selection > 1) ? selection - 1 : nItems;
+            break;
+            
+        case 80:  // Down arrow
+        case 's':
+        case 'S':
+            selection = (selection < nItems) ? selection + 1 : 1;
+            break;
+            
+        case 13:  // Enter
+        case 'd':
+        case 'D':
+            return -selection;  // Return current selection
+            
+        case 27:  // Escape
+        case 'q':
+        case 'Q':
+            return 0;   // Signal exit
+            
+        case '1': case '2': case '3': case '4': case '5':
+        case '6': case '7': case '8': case '9':
+            int num = key - '0';
+            if (num <= nItems) {
+                return -num;  // Return direct selection
+            }
+            break;
     }
     return selection;
 }
 
-/**
- * @brief Ask the user a yes/no question
- * @param question Question to ask
- * @return 'y' if yes, 'n' if no
- */
-char SelectionMenu::askYesNo(const char* question) {
-    printf("\n%s (y/n): ", question);
-    char response;
+static int generateClassicMenu(SelectionMenu* menu, const char* title, const char* items[], int nItems) {
+    int selection = 1;
+    char input[32];
+    
     do {
-        response = tolower(_getch());
-    } while (response != 'y' && response != 'n');
-    printf("%c\n", response);
-    return response;
+        SelectionMenu_clearScreen();
+        displayTitle(title);
+        
+        // Display menu items
+        for (int i = 0; i < nItems; i++) {
+            printf("%d. %s\n", i + 1, items[i]);
+        }
+        
+        // Get user input
+        printf("\nEnter your choice (1-%d, 0 to exit): ", nItems);
+        if (fgets(input, sizeof(input), stdin)) {
+            // Remove newline
+            input[strcspn(input, "\n")] = 0;
+            
+            // Convert to integer
+            selection = atoi(input);
+            
+            // Validate input
+            if (selection >= 0 && selection <= nItems) {
+                return selection;
+            }
+        }
+        
+        printf("\nInvalid choice. Press any key to try again...");
+        _getch();
+        
+    } while (1);
 }
 
-/**
- * @brief Clear the screen
- */
-void SelectionMenu::clearScreen() {
-    system("cls");
+static int generateCursorMenu(SelectionMenu* menu, const char* title, const char* items[], int nItems) {
+    int selection = 1;
+    int key;
+    
+    do {
+        SelectionMenu_clearScreen();
+        displayTitle(title);
+        
+        // Display menu items
+        for (int i = 0; i < nItems; i++) {
+            if (i + 1 == selection) {
+                printf("> ");
+                SelectionMenu_printColored(COLOR_GREEN, "%s\n", items[i]);
+            } else {
+                printf("  %s\n", items[i]);
+            }
+        }
+        
+        key = getKey();
+        selection = handleNavigation(selection, nItems, key);
+        
+        if (selection <= 0) {
+            return (selection < 0) ? -selection : 0;
+        }
+    } while (1);
 }
 
-/**
- * @brief Check if a file exists
- * @param filename File name to check
- * @return true if file exists
- */
-bool SelectionMenu::fileExists(const char* filename) {
-    FILE* file;
-    if (fopen_s(&file, filename, "r") == 0) {
-        fclose(file);
-        return true;
+static int generateCondensedMenu(SelectionMenu* menu, const char* title, const char* items[], int nItems) {
+    int selection = 1;
+    int key;
+    int startItem = 0;
+    const int ITEMS_PER_PAGE = 3;
+    
+    do {
+        SelectionMenu_clearScreen();
+        displayTitle(title);
+        
+        // Calculate visible range
+        if (selection > startItem + ITEMS_PER_PAGE) {
+            startItem = selection - ITEMS_PER_PAGE;
+        } else if (selection <= startItem) {
+            startItem = selection - 1;
+        }
+        
+        // Display menu items
+        for (int i = startItem; i < startItem + ITEMS_PER_PAGE && i < nItems; i++) {
+            if (i + 1 == selection) {
+                printf("> ");
+                SelectionMenu_printColored(COLOR_GREEN, "%s\n", items[i]);
+            } else {
+                printf("  %s\n", items[i]);
+            }
+        }
+        
+        // Display navigation help
+        if (startItem > 0) {
+            printf("\n^ More items above");
+        }
+        if (startItem + ITEMS_PER_PAGE < nItems) {
+            printf("\nv More items below");
+        }
+        
+        key = getKey();
+        selection = handleNavigation(selection, nItems, key);
+        
+        if (selection <= 0) {
+            return (selection < 0) ? -selection : 0;
+        }
+    } while (1);
+}
+
+int SelectionMenu_showMenu(SelectionMenu* menu, const char* title, const char* items[], int nItems) {
+    switch (menu->currentMenuType) {
+        case MENU_CURSOR:
+            return generateCursorMenu(menu, title, items, nItems);
+        case MENU_CONDENSED:
+            return generateCondensedMenu(menu, title, items, nItems);
+        default:
+            return generateClassicMenu(menu, title, items, nItems);
     }
-    return false;
 }
 
-/**
- * @brief Get the output file name
- * @param defaultName Default file name
- * @return File name
- */
-char* SelectionMenu::getOutputFilename(const char* defaultName) {
+char** SelectionMenu_findFiles(SelectionMenu* menu, const char* directory, const char* extension, int* fileCount, int maxFiles) {
+    char searchPath[MAX_PATH_LENGTH];
+    WIN32_FIND_DATA findData;
+    HANDLE hFind;
+    char** files = NULL;
+    int count = 0;
+    
+    // Create search path with wildcard
+    snprintf(searchPath, MAX_PATH_LENGTH, "%s\\*%s", directory, extension);
+    
+    // Start file search
+    hFind = FindFirstFile(searchPath, &findData);
+    if (hFind == INVALID_HANDLE_VALUE) {
+        *fileCount = 0;
+        return NULL;
+    }
+    
+    // Count matching files
+    do {
+        if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+            count++;
+        }
+    } while (count < maxFiles && FindNextFile(hFind, &findData));
+    
+    // Allocate memory for file list
+    files = (char**)malloc(count * sizeof(char*));
+    if (!files) {
+        FindClose(hFind);
+        *fileCount = 0;
+        return NULL;
+    }
+    
+    // Reset search and store filenames
+    FindClose(hFind);
+    hFind = FindFirstFile(searchPath, &findData);
+    count = 0;
+    
+    do {
+        if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+            files[count] = (char*)malloc(strlen(findData.cFileName) + 1);
+            if (files[count]) {
+                strcpy(files[count], findData.cFileName);
+                count++;
+            }
+        }
+    } while (count < maxFiles && FindNextFile(hFind, &findData));
+    
+    FindClose(hFind);
+    *fileCount = count;
+    return files;
+}
+
+const char** SelectionMenu_createMenuItems(SelectionMenu* menu, char** files, int fileCount, int maxPathLength) {
+    const char** menuItems = (const char**)malloc(fileCount * sizeof(char*));
+    if (!menuItems) return NULL;
+    
+    for (int i = 0; i < fileCount; i++) {
+        menuItems[i] = files[i];
+    }
+    
+    return menuItems;
+}
+
+void SelectionMenu_freeMenuItems(const char** menuItems, int count) {
+    if (menuItems) {
+        free((void*)menuItems);
+    }
+}
+
+void SelectionMenu_freeFileList(char** files, int count) {
+    if (files) {
+        for (int i = 0; i < count; i++) {
+            free(files[i]);
+        }
+        free(files);
+    }
+}
+
+char* SelectionMenu_getOutputFilename(SelectionMenu* menu, const char* defaultName) {
     char* filename = (char*)malloc(MAX_PATH_LENGTH);
+    if (!filename) return NULL;
+    
     strncpy(filename, defaultName, MAX_PATH_LENGTH - 1);
     filename[MAX_PATH_LENGTH - 1] = '\0';
+    
     return filename;
 }
 
-/**
- * @brief Show a menu to the user
- * @param title Menu title
- * @param items Array of menu items
- * @param nItems Number of menu items
- * @return Selected menu item index
- */
-int SelectionMenu::showMenu(const char* title, const char* items[], int nItems) {
-    switch (currentMenuType) {
-        case CURSOR:
-            return generateCursorMenu(title, items, nItems);
-        case CONDENSED:
-            return generateCondensedMenu(title, items, nItems);
-        default:
-            return generateClassicMenu(title, items, nItems);
+int SelectionMenu_fileExists(const char* filename) {
+    FILE* file;
+    if (fopen_s(&file, filename, "r") == 0) {
+        fclose(file);
+        return 1;
     }
+    return 0;
 }
 
-/**
- * @brief Generate a classic menu
- * @param title Menu title
- * @param items Array of menu items
- * @param nItems Number of menu items
- * @return Selected menu item index
- */
-int SelectionMenu::generateClassicMenu(const char* title, const char* items[], int nItems) {
-    int selection = 0;
-    
-    while (1) {
-        displayTitle(title);
-        
-        for (int i = 0; i < nItems; i++) {
-            printf("%s\n", items[i]);
-        }
-        
-        printf("\nEnter your choice (1-%d): ", nItems);
-        int key = _getch();
-        
-        if (isNumberKey(key, nItems)) {
-            selection = getNumberValue(key) + 1;
-            printf("%d", selection);  ///< Echo the number
-            
-            // Wait for enter key
-            while ((key = _getch()) != KEY_ENTER) {
-                // Ignore all other keys
-            }
-            return selection;
-        }
-    }
-}
-
-/**
- * @brief Generate a condensed menu
- * @param title Menu title
- * @param items Array of menu items
- * @param nItems Number of menu items
- * @return Selected menu item index
- */
-int SelectionMenu::generateCondensedMenu(const char* title, const char* items[], int nItems) {
-    int currentSelection = 1;
-    int selected = 0;
-    
-    while (!selected) {
-        displayTitle(title);
-        
-        // Show options
-        printf("Options (");
-        for (int i = 0; i < nItems; i++) {
-            printf("%d", i + 1);
-            if (i < nItems - 1) printf(",");
-        }
-        printf(")\n\n");
-        
-        // Show preview of current selection
-        printf("Selected: ");
-        setColor(COLOR_BLACK, menuColor);
-        printf("%s", items[currentSelection - 1]);
-        setColor(menuColor);
-        printf("\n\n");
-        
-        printf("Enter number or use W/S to navigate, Enter to select, ESC to go back\n");
-        
-        int newSelection = handleNavigation(currentSelection, nItems, getKey());
-        if (newSelection == -1) {
-            selected = 1;
-        } else if (newSelection == 0) {
-            return 0;  ///< Return 0 for ESC key
-        } else {
-            currentSelection = newSelection;
-        }
-    }
-    
-    clearScreen();
-    return currentSelection;
-}
-
-/**
- * @brief Generate a cursor menu
- * @param title Menu title
- * @param items Array of menu items
- * @param nItems Number of menu items
- * @return Selected menu item index
- */
-int SelectionMenu::generateCursorMenu(const char* title, const char* items[], int nItems) {
-    int currentSelection = 1;
-    int selected = 0;
-    
-    while (!selected) {
-        displayTitle(title);
-        
-        // Show all items
-        for (int i = 0; i < nItems; i++) {
-            if (i + 1 == currentSelection) {
-                setColor(COLOR_BLACK, menuColor);
-                printf("%s\n", items[i]);
-                setColor(menuColor);
-            } else {
-                printf("%s\n", items[i]);
-            }
-        }
-        
-        printf("\nUse arrow keys to preview, Enter/D to confirm, ESC to go back\n");
-        
-        int key = getKey();
-        if (isEnterKey(key)) {
-            selected = 1;
-        } else if (isEscKey(key)) {
-            return 0;  ///< Return 0 for ESC key
-        } else {
-            int newSelection = handleNavigation(currentSelection, nItems, key);
-            if (newSelection != currentSelection) {
-                currentSelection = newSelection;
-                clearScreen();
-            }
-        }
-    }
-    
-    return currentSelection;
+char SelectionMenu_askYesNo(const char* question) {
+    char response;
+    printf("%s (y/n): ", question);
+    do {
+        response = (char)tolower(_getch());
+    } while (response != 'y' && response != 'n');
+    printf("%c\n", response);
+    return response;
 }

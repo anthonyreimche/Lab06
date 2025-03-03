@@ -322,4 +322,5 @@ CMakeFiles/Lab06.dir/main.cpp.obj: D:\Repositories\Lab06\main.cpp \
  C:/Program\ Files/JetBrains/CLion\ 2024.3.1.1/bin/mingw/x86_64-w64-mingw32/include/winsvc.h \
  C:/Program\ Files/JetBrains/CLion\ 2024.3.1.1/bin/mingw/x86_64-w64-mingw32/include/mcx.h \
  C:/Program\ Files/JetBrains/CLion\ 2024.3.1.1/bin/mingw/x86_64-w64-mingw32/include/imm.h \
- D:\Repositories\Lab06\selectionMenu.h
+ D:\Repositories\Lab06\selectionMenu.h \
+ D:\Repositories\Lab06\fileHandler.h

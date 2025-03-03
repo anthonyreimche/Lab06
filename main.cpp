@@ -1,5 +1,5 @@
 /**
- * @file main.cpp
+ * @file main.c
  * @brief Coordinate sorting visualization program
  * 
  * This program provides an interactive menu system for visualizing different
@@ -14,41 +14,45 @@
 #include <conio.h>
 #include <windows.h>
 #include "selectionMenu.h"
+#include "fileHandler.h"
 
 // Menu configuration
 const char* MENU_TITLE = "Lab 6: Sorting Algorithm Visualizer";
 const char* MENU_ITEMS[] = {
-    "1. Bubble Sort",
-    "2. Optimised Sort",
-    "3. Settings",
-    "4. Exit"
+    "Bubble Sort",
+    "Optimised Sort",
+    "Settings",
+    "Exit"
 };
 const int NUM_MENU_ITEMS = 4;
 
 /** Enum for accessing coordinate components */
-enum Coordinates { x, y };
+typedef enum {
+    COORD_X,
+    COORD_Y
+} CoordinateAxis;
 
 /**
  * @struct SortStats
  * @brief Statistics collected during sorting operations
  */
-struct SortStats {
+typedef struct {
     int comparisons;  ///< Number of comparisons performed
     int swaps;        ///< Number of swaps performed
-};
+} SortStats;
+
+// Global menu instance
+SelectionMenu g_menu;
 
 // Forward declarations
-void menuSettings();
-void displayMenu();
-void bubbleSort();
-void optimisedSort();
+void menuSettings(void);
+void displayMenu(void);
+void bubbleSort(void);
+void optimisedSort(void);
 SortStats sortCoordinates(double** coordinates, int n, int m);
 SortStats optimisedSortCoordinates(double** coordinates, int n, int m);
 double** read2DArray(const char* filename, int* n, int* m);
-bool saveCoordinatesToFile(const char* filename, double** coordinates, int n, int m);
-
-// Global menu instance
-SelectionMenu menu;
+int saveCoordinatesToFile(const char* filename, double** coordinates, int n, int m);
 
 /**
  * @brief Handles menu style settings
@@ -58,92 +62,34 @@ SelectionMenu menu;
  * - Cursor (interactive arrow selection)
  * - Condensed (compact display)
  */
-void menuSettings() {
+void menuSettings(void) {
     const char* settingsItems[] = {
-        "1. Classic Menu",
-        "2. Cursor Menu",
-        "3. Condensed Menu"
+        "Classic",
+        "Cursor",
+        "Condensed"
     };
     
     // Use current menu style for settings
-    MenuType currentType = menu.getMenuType();
-    int choice = menu.showMenu("Menu Settings", settingsItems, 3);
+    MenuType currentType = SelectionMenu_getMenuType(&g_menu);
+    int choice = SelectionMenu_showMenu(&g_menu, "Menu Settings", settingsItems, 3);
     
     // Apply selected style
     switch (choice) {
         case 1:
-            menu.setMenuType(CLASSIC);
-            menu.printColored(COLOR_RED, "\nChanged to Classic Menu\n");
+            SelectionMenu_setMenuType(&g_menu, MENU_CLASSIC);
+            SelectionMenu_printColored(COLOR_RED, "\nChanged to Classic Menu\n");
             break;
         case 2:
-            menu.setMenuType(CURSOR);
-            menu.printColored(COLOR_RED, "\nChanged to Cursor Menu\n");
+            SelectionMenu_setMenuType(&g_menu, MENU_CURSOR);
+            SelectionMenu_printColored(COLOR_RED, "\nChanged to Cursor Menu\n");
             break;
         case 3:
-            menu.setMenuType(CONDENSED);
-            menu.printColored(COLOR_RED, "\nChanged to Condensed Menu\n");
+            SelectionMenu_setMenuType(&g_menu, MENU_CONDENSED);
+            SelectionMenu_printColored(COLOR_RED, "\nChanged to Condensed Menu\n");
             break;
     }
     
-    menu.waitForKey();
-}
-
-/**
- * @brief Reads a 2D array of coordinates from a CSV file
- * 
- * @param filename Name of the file to read
- * @param n Output parameter for number of rows
- * @param m Output parameter for number of columns
- * @return Dynamically allocated 2D array of coordinates
- */
-double** read2DArray(const char* filename, int* n, int* m) {
-    printf("Reading from file \"%s\"...\n", filename);
-    FILE* file;
-    if (fopen_s(&file, filename, "r") != 0) {
-        printf("Error opening file: %s\n", filename);
-        return NULL;
-    }
-    
-    // Count lines and columns
-    *n = 0;
-    *m = 0;
-    char line[1024];
-    
-    // Read first line to determine number of columns
-    if (fgets(line, sizeof(line), file)) {
-        char* token = strtok(line, ",");
-        while (token) {
-            (*m)++;
-            token = strtok(NULL, ",");
-        }
-        (*n)++;
-    }
-    
-    // Count remaining lines
-    while (fgets(line, sizeof(line), file)) {
-        (*n)++;
-    }
-    
-    // Allocate memory
-    double** data = (double**)malloc(*n * sizeof(double*));
-    for (int i = 0; i < *n; i++) {
-        data[i] = (double*)malloc(*m * sizeof(double));
-    }
-    
-    // Reset file pointer and read data
-    rewind(file);
-    for (int i = 0; i < *n; i++) {
-        if (fgets(line, sizeof(line), file)) {
-            char* token = strtok(line, ",");
-            for (int j = 0; j < *m && token; j++) {
-                data[i][j] = atof(token);
-                token = strtok(NULL, ",");
-            }
-        }
-    }
-    
-    fclose(file);
-    return data;
+    SelectionMenu_waitForKey(NULL);
 }
 
 /**
@@ -197,33 +143,6 @@ SortStats sortCoordinates(double** coordinates, int n, int m) {
 }
 
 /**
- * @brief Saves sorted coordinates to a CSV file
- * 
- * @param filename Name of the output file
- * @param coordinates 2D array of coordinates to save
- * @param n Number of coordinates
- * @param m Number of components per coordinate
- * @return true if save was successful
- */
-bool saveCoordinatesToFile(const char* filename, double** coordinates, int n, int m) {
-    FILE* file;
-    if (fopen_s(&file, filename, "w") != 0) {
-        printf("Error creating output file: %s\n", filename);
-        return false;
-    }
-    
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < m; j++) {
-            fprintf(file, "%.2f%s", coordinates[i][j], j < m - 1 ? "," : "");
-        }
-        fprintf(file, "\n");
-    }
-    
-    fclose(file);
-    return true;
-}
-
-/**
  * @brief Displays a single coordinate with proper formatting
  * 
  * @param row Array containing the coordinate components
@@ -237,10 +156,10 @@ void displayCoordinate(double* row, int m) {
 }
 
 /**
- * @brief Displays a coordinate with its magnitude (sum)
+ * @brief Displays a coordinate with its sum
  * 
  * Formats the coordinate according to the user's preferred style:
- * [   x.xx ,    y.yy ]   magnitude:    z.zz
+ * [   x.xx ,    y.yy ]   sum:    z.zz
  * 
  * @param row Array containing the coordinate components
  * @param m Number of components
@@ -250,7 +169,7 @@ void displayCoordinateWithSum(double* row, int m) {
     for (int j = 0; j < m; j++) {
         printf("%8.2f%s", row[j], j < m-1 ? " ," : " ]");
     }
-    menu.printColored(COLOR_CYAN, "   magnitude: %8.2f\n", calculateRowSum(row, m));
+    SelectionMenu_printColored(COLOR_CYAN, "   sum: %8.2f\n", calculateRowSum(row, m));
 }
 
 /**
@@ -263,78 +182,87 @@ void displayCoordinateWithSum(double* row, int m) {
  * 4. View sorting statistics
  * 5. Save the sorted coordinates
  */
-void bubbleSort() {
-    menu.printColored(COLOR_RED, "Bubble sort chosen.\n");
-    menu.setColor(COLOR_GREEN);
-
+void bubbleSort(void) {
+    char** files = NULL;
+    const char** menuItems = NULL;
+    int fileCount = 0;
+    
     // Find CSV files
-    char currentDir[MAX_PATH_LENGTH];
-    GetCurrentDirectory(MAX_PATH_LENGTH, currentDir);
-    
-    int fileCount;
-    char** files = menu.findFiles(currentDir, ".csv", &fileCount);
-    if (fileCount == 0) {
-        menu.printColored(COLOR_RED, "No CSV files found in current directory.\n");
+    files = SelectionMenu_findFiles(&g_menu, ".", "csv", &fileCount, MAX_FILES);
+    if (!files || fileCount == 0) {
+        SelectionMenu_printColored(COLOR_RED, "\nNo CSV files found!\n");
+        SelectionMenu_waitForKey(NULL);
         return;
     }
     
-    const char** menuItems = menu.createMenuItems(files, fileCount);
-    
-    // Show file selection menu
-    printf("\nSelect a CSV file to sort:\n");
-    int choice = menu.showMenu("File Selection", menuItems, fileCount);
-    if (choice <= 0) {  // Handle ESC key
-        menu.freeMenuItems(menuItems, fileCount);
-        menu.freeFileList(files, fileCount);
+    // Create menu items from filenames
+    menuItems = SelectionMenu_createMenuItems(&g_menu, files, fileCount, MAX_PATH_LENGTH);
+    if (!menuItems) {
+        SelectionMenu_freeFileList(files, fileCount);
         return;
     }
     
-    // Load the selected file
-    char* selectedFile = files[choice - 1];
+    // Let user select a file
+    int choice = SelectionMenu_showMenu(&g_menu, "Select CSV File", menuItems, fileCount);
+    if (choice <= 0) {
+        SelectionMenu_freeMenuItems(menuItems, fileCount);
+        SelectionMenu_freeFileList(files, fileCount);
+        return;
+    }
+    
+    // Read coordinates from file
     int n = 0, m = 0;
-    double** coordinates = read2DArray(selectedFile, &n, &m);
+    double** coordinates = FileHandler_readCoordinates(files[choice-1], &n, &m);
     if (!coordinates) {
-        menu.freeMenuItems(menuItems, fileCount);
-        menu.freeFileList(files, fileCount);
+        SelectionMenu_printColored(COLOR_RED, "\nFailed to read coordinates!\n");
+        SelectionMenu_freeMenuItems(menuItems, fileCount);
+        SelectionMenu_freeFileList(files, fileCount);
+        SelectionMenu_waitForKey(NULL);
         return;
     }
     
     // Display original coordinates
-    printf("\nOriginal coordinates:\n");
+    SelectionMenu_clearScreen();
+    printf("\nOriginal coordinates:\n\n");
     for (int i = 0; i < n; i++) {
         displayCoordinate(coordinates[i], m);
     }
+    SelectionMenu_waitForKey("\nPress any key to start sorting...");
     
-    // Sort and get statistics
+    // Sort coordinates and get statistics
     SortStats stats = sortCoordinates(coordinates, n, m);
     
-    // Display sorted coordinates
-    printf("\nSorted coordinates:\n");
+    // Display sorted coordinates with sums
+    SelectionMenu_clearScreen();
+    printf("\nSorted coordinates:\n\n");
     for (int i = 0; i < n; i++) {
         displayCoordinateWithSum(coordinates[i], m);
     }
     
-    // Display sorting statistics
-    menu.printColored(COLOR_CYAN, "\nBubble Sort Statistics:\n");
-    menu.printColored(COLOR_CYAN, "Comparisons: %d\n", stats.comparisons);
-    menu.printColored(COLOR_CYAN, "Swaps: %d\n", stats.swaps);
+    // Display statistics
+    printf("\nSort Statistics:\n");
+    printf("Comparisons: %d\n", stats.comparisons);
+    printf("Swaps: %d\n", stats.swaps);
     
     // Save sorted coordinates
-    char outputFilename[MAX_PATH_LENGTH];
-    sprintf_s(outputFilename, MAX_PATH_LENGTH, "sorted_%s", selectedFile);
-    if (saveCoordinatesToFile(outputFilename, coordinates, n, m)) {
-        menu.printColored(COLOR_GREEN, "\nSorted coordinates saved to: %s\n", outputFilename);
+    char response = SelectionMenu_askYesNo("\nSave sorted coordinates? ");
+    if (response == 'y') {
+        char* outputFile = SelectionMenu_getOutputFilename(&g_menu, "sorted.csv");
+        if (outputFile) {
+            if (saveCoordinatesToFile(outputFile, coordinates, n, m)) {
+                SelectionMenu_printColored(COLOR_GREEN, "\nCoordinates saved to %s\n", outputFile);
+            } else {
+                SelectionMenu_printColored(COLOR_RED, "\nFailed to save coordinates!\n");
+            }
+            free(outputFile);
+        }
     }
     
     // Cleanup
-    for (int i = 0; i < n; i++) {
-        free(coordinates[i]);
-    }
-    free(coordinates);
-    menu.freeMenuItems(menuItems, fileCount);
-    menu.freeFileList(files, fileCount);
-    
-    menu.waitForKey();
+    FileHandler_freeCoordinates(coordinates, n);
+    SelectionMenu_freeMenuItems(menuItems, fileCount);
+    SelectionMenu_freeFileList(files, fileCount);
+    SelectionMenu_waitForKey(NULL);
 }
 
 /**
@@ -409,81 +337,121 @@ SortStats optimisedSortCoordinates(double** coordinates, int n, int m) {
 /**
  * @brief Handles the optimized sort visualization option
  * 
- * Similar to bubbleSort(), but uses the optimized sorting algorithm
- * and displays comparative performance metrics.
+ * Allows the user to:
+ * 1. Select a CSV file
+ * 2. View the original coordinates
+ * 3. Sort the coordinates using optimized sort
+ * 4. View sorting statistics
+ * 5. Save the sorted coordinates
  */
-void optimisedSort() {
-    menu.printColored(COLOR_RED, "Optimised sort chosen.\n");
-    menu.setColor(COLOR_GREEN);
-
+void optimisedSort(void) {
+    char** files = NULL;
+    const char** menuItems = NULL;
+    int fileCount = 0;
+    
     // Find CSV files
-    char currentDir[MAX_PATH_LENGTH];
-    GetCurrentDirectory(MAX_PATH_LENGTH, currentDir);
-    
-    int fileCount;
-    char** files = menu.findFiles(currentDir, ".csv", &fileCount);
-    if (fileCount == 0) {
-        menu.printColored(COLOR_RED, "No CSV files found in current directory.\n");
+    files = SelectionMenu_findFiles(&g_menu, ".", "csv", &fileCount, MAX_FILES);
+    if (!files || fileCount == 0) {
+        SelectionMenu_printColored(COLOR_RED, "\nNo CSV files found!\n");
+        SelectionMenu_waitForKey(NULL);
         return;
     }
     
-    const char** menuItems = menu.createMenuItems(files, fileCount);
-    
-    // Show file selection menu
-    printf("\nSelect a CSV file to sort:\n");
-    int choice = menu.showMenu("File Selection", menuItems, fileCount);
-    if (choice <= 0) {  // Handle ESC key
-        menu.freeMenuItems(menuItems, fileCount);
-        menu.freeFileList(files, fileCount);
+    // Create menu items from filenames
+    menuItems = SelectionMenu_createMenuItems(&g_menu, files, fileCount, MAX_PATH_LENGTH);
+    if (!menuItems) {
+        SelectionMenu_freeFileList(files, fileCount);
         return;
     }
     
-    // Load the selected file
-    char* selectedFile = files[choice - 1];
+    // Let user select a file
+    int choice = SelectionMenu_showMenu(&g_menu, "Select CSV File", menuItems, fileCount);
+    if (choice <= 0) {
+        SelectionMenu_freeMenuItems(menuItems, fileCount);
+        SelectionMenu_freeFileList(files, fileCount);
+        return;
+    }
+    
+    // Read coordinates from file
     int n = 0, m = 0;
-    double** coordinates = read2DArray(selectedFile, &n, &m);
+    double** coordinates = FileHandler_readCoordinates(files[choice-1], &n, &m);
     if (!coordinates) {
-        menu.freeMenuItems(menuItems, fileCount);
-        menu.freeFileList(files, fileCount);
+        SelectionMenu_printColored(COLOR_RED, "\nFailed to read coordinates!\n");
+        SelectionMenu_freeMenuItems(menuItems, fileCount);
+        SelectionMenu_freeFileList(files, fileCount);
+        SelectionMenu_waitForKey(NULL);
         return;
     }
     
     // Display original coordinates
-    printf("\nOriginal coordinates:\n");
+    SelectionMenu_clearScreen();
+    printf("\nOriginal coordinates:\n\n");
     for (int i = 0; i < n; i++) {
         displayCoordinate(coordinates[i], m);
     }
+    SelectionMenu_waitForKey("\nPress any key to start sorting...");
     
-    // Sort and get statistics
+    // Sort coordinates and get statistics
     SortStats stats = optimisedSortCoordinates(coordinates, n, m);
     
-    // Display sorted coordinates
-    printf("\nSorted coordinates:\n");
+    // Display sorted coordinates with sums
+    SelectionMenu_clearScreen();
+    printf("\nSorted coordinates:\n\n");
     for (int i = 0; i < n; i++) {
         displayCoordinateWithSum(coordinates[i], m);
     }
     
-    // Display sorting statistics
-    menu.printColored(COLOR_CYAN, "\nOptimised Sort Statistics:\n");
-    menu.printColored(COLOR_CYAN, "Comparisons: %d\n", stats.comparisons);
-    menu.printColored(COLOR_CYAN, "Swaps: %d\n", stats.swaps);
+    // Display statistics
+    printf("\nSort Statistics:\n");
+    printf("Comparisons: %d\n", stats.comparisons);
+    printf("Swaps: %d\n", stats.swaps);
     
     // Save sorted coordinates
-    char outputFilename[MAX_PATH_LENGTH];
-    sprintf_s(outputFilename, MAX_PATH_LENGTH, "sorted_%s", selectedFile);
-    if (saveCoordinatesToFile(outputFilename, coordinates, n, m)) {
-        menu.printColored(COLOR_GREEN, "\nSorted coordinates saved to: %s\n", outputFilename);
+    char response = SelectionMenu_askYesNo("\nSave sorted coordinates? ");
+    if (response == 'y') {
+        char* outputFile = SelectionMenu_getOutputFilename(&g_menu, "sorted.csv");
+        if (outputFile) {
+            if (saveCoordinatesToFile(outputFile, coordinates, n, m)) {
+                SelectionMenu_printColored(COLOR_GREEN, "\nCoordinates saved to %s\n", outputFile);
+            } else {
+                SelectionMenu_printColored(COLOR_RED, "\nFailed to save coordinates!\n");
+            }
+            free(outputFile);
+        }
     }
     
     // Cleanup
-    for (int i = 0; i < n; i++) {
-        free(coordinates[i]);
+    FileHandler_freeCoordinates(coordinates, n);
+    SelectionMenu_freeMenuItems(menuItems, fileCount);
+    SelectionMenu_freeFileList(files, fileCount);
+    SelectionMenu_waitForKey(NULL);
+}
+
+/**
+ * @brief Saves sorted coordinates to a CSV file
+ * 
+ * @param filename Name of the output file
+ * @param coordinates 2D array of coordinates to save
+ * @param n Number of coordinates
+ * @param m Number of components per coordinate
+ * @return true if save was successful
+ */
+int saveCoordinatesToFile(const char* filename, double** coordinates, int n, int m) {
+    FILE* file;
+    if (fopen_s(&file, filename, "w") != 0) {
+        printf("Error creating output file: %s\n", filename);
+        return 0;
     }
-    free(coordinates);
-    menu.freeMenuItems(menuItems, fileCount);
-    menu.freeFileList(files, fileCount);
     
-    menu.waitForKey();
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++) {
+            fprintf(file, "%.2f%s", coordinates[i][j], j < m - 1 ? "," : "");
+        }
+        fprintf(file, "\n");
+    }
+    
+    fclose(file);
+    return 1;
 }
 
 /**
@@ -493,19 +461,26 @@ void optimisedSort() {
  * 
  * @return 0 on successful execution
  */
-int main() {
-    menu.setMenuType(CLASSIC);  // Set Classic as default menu style
-    int choice;
+int main(void) {
+    SelectionMenu_init(&g_menu);  // Initialize menu
+    SelectionMenu_setMenuColor(COLOR_GREEN);  // Set default text color to green
     
+    int choice;
     do {
-        choice = menu.showMenu(MENU_TITLE, MENU_ITEMS, NUM_MENU_ITEMS);
+        choice = SelectionMenu_showMenu(&g_menu, MENU_TITLE, MENU_ITEMS, NUM_MENU_ITEMS);
         
         switch (choice) {
-            case 1: bubbleSort(); break;
-            case 2: optimisedSort(); break;
-            case 3: menuSettings(); break;
+            case 1:
+                bubbleSort();
+                break;
+            case 2:
+                optimisedSort();
+                break;
+            case 3:
+                menuSettings();
+                break;
         }
-    } while (choice != 4);
+    } while (choice != 4 && choice != 0);
     
     return 0;
 }

@@ -8,6 +8,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
+  "D:/Repositories/Lab06/fileHandler.cpp" "CMakeFiles/Lab06.dir/fileHandler.cpp.obj" "gcc" "CMakeFiles/Lab06.dir/fileHandler.cpp.obj.d"
   "D:/Repositories/Lab06/main.cpp" "CMakeFiles/Lab06.dir/main.cpp.obj" "gcc" "CMakeFiles/Lab06.dir/main.cpp.obj.d"
   "D:/Repositories/Lab06/selectionMenu.cpp" "CMakeFiles/Lab06.dir/selectionMenu.cpp.obj" "gcc" "CMakeFiles/Lab06.dir/selectionMenu.cpp.obj.d"
   )

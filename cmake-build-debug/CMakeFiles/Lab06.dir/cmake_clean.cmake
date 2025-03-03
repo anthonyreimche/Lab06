@@ -1,4 +1,6 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/Lab06.dir/fileHandler.cpp.obj"
+  "CMakeFiles/Lab06.dir/fileHandler.cpp.obj.d"
   "CMakeFiles/Lab06.dir/main.cpp.obj"
   "CMakeFiles/Lab06.dir/main.cpp.obj.d"
   "CMakeFiles/Lab06.dir/selectionMenu.cpp.obj"

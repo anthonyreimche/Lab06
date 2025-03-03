@@ -128,6 +128,30 @@ Lab06/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\Lab06.dir\build.make CMakeFiles/Lab06.dir/build
 .PHONY : Lab06/fast
 
+fileHandler.obj: fileHandler.cpp.obj
+.PHONY : fileHandler.obj
+
+# target to build an object file
+fileHandler.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\Lab06.dir\build.make CMakeFiles/Lab06.dir/fileHandler.cpp.obj
+.PHONY : fileHandler.cpp.obj
+
+fileHandler.i: fileHandler.cpp.i
+.PHONY : fileHandler.i
+
+# target to preprocess a source file
+fileHandler.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\Lab06.dir\build.make CMakeFiles/Lab06.dir/fileHandler.cpp.i
+.PHONY : fileHandler.cpp.i
+
+fileHandler.s: fileHandler.cpp.s
+.PHONY : fileHandler.s
+
+# target to generate assembly for a file
+fileHandler.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\Lab06.dir\build.make CMakeFiles/Lab06.dir/fileHandler.cpp.s
+.PHONY : fileHandler.cpp.s
+
 main.obj: main.cpp.obj
 .PHONY : main.obj
 
@@ -185,6 +209,9 @@ help:
 	@echo ... edit_cache
 	@echo ... rebuild_cache
 	@echo ... Lab06
+	@echo ... fileHandler.obj
+	@echo ... fileHandler.i
+	@echo ... fileHandler.s
 	@echo ... main.obj
 	@echo ... main.i
 	@echo ... main.s
